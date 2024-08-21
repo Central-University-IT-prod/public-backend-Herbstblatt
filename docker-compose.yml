@@ -1,0 +1,87 @@
+services:
+  backend:
+    build: apps/backend
+    environment: 
+      PGHOST: 'database'
+      PGPORT: 5432
+    env_file:
+      - .env
+    volumes:
+      - ./db:/code/db
+    ports:
+      - 8010:8010
+    depends_on: 
+      database:
+        condition: service_healthy
+      migration:
+        condition: service_completed_successfully
+
+  frontend:
+    build: apps/frontend
+    depends_on:
+      - backend
+    ports:
+      - 80:80
+    
+  bot:
+    build: apps/bot
+    image: travelbot:latest
+    pull_policy: never
+    environment: 
+      PGHOST: 'database'
+      PGPORT: 5432
+    env_file:
+      - .env
+    volumes:
+      - ./db:/code/db
+    depends_on: 
+      database:
+        condition: service_healthy
+      migration:
+        condition: service_completed_successfully
+
+  migration:
+    image: travelbot:latest
+    command: aerich upgrade
+    pull_policy: never
+    environment: 
+      PGHOST: 'database'
+      PGPORT: 5432
+    env_file:
+      - .env
+    volumes:
+      - ./db:/code/db
+    depends_on:
+      database:
+        condition: service_healthy
+
+  database:
+    image: postgres
+    ports:
+      - 5432:5432
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    env_file:
+      - .env
+    environment: 
+      POSTGRES_USER: '${PGUSER}'
+      POSTGRES_PASSWORD: '${PGPASSWORD}'
+      POSTGRES_DB: '${PGDATABASE}'
+    healthcheck:
+      test: pg_isready
+      interval: 3s
+      timeout: 2s
+      retries: 3
+
+  ngrok:
+    image: ngrok/ngrok
+    command: http --domain=${WEB_APP_DOMAIN} --log=stdout frontend:80
+    env_file:
+      - .env
+    depends_on:
+      - frontend
+      - backend
+
+volumes:
+  db-data:
+  

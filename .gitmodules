@@ -1,0 +1,3 @@
+[submodule "georender"]
+	path = apps/bot/georender
+	url = https://github.com/loskoderos/georender.git
